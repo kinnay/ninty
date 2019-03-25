@@ -73,11 +73,6 @@ PyObject *ADPCM_decode(PyObject *self, PyObject *args) {
 		return NULL;
 	}
 	
-	if (inlen > 0x4000000) {
-		PyErr_SetString(PyExc_OverflowError, "buffer is too large");
-		return NULL;
-	}
-	
 	uint32_t bytesNeeded = numSamples / 14 * 8;
 	if (numSamples % 14) {
 		bytesNeeded += (numSamples % 14 + 1) / 2 + 1;
@@ -88,7 +83,12 @@ PyObject *ADPCM_decode(PyObject *self, PyObject *args) {
 		return NULL;
 	}
 	
-	PyObject *bytes = PyBytes_FromStringAndSize(NULL, inlen * 2);
+	if (numSamples > 0x4000000) {
+		PyErr_SetString(PyExc_OverflowError, "stream is too large");
+		return NULL;
+	}
+	
+	PyObject *bytes = PyBytes_FromStringAndSize(NULL, numSamples * 2);
 	if (!bytes) return NULL;
 	
 	int16_t *out = (int16_t *)PyBytes_AsString(bytes);
