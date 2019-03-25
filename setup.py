@@ -1,7 +1,7 @@
 
 from distutils.core import Extension, setup
 
-MODULES = ["lzss", "gx2", "endian", "yaz0"]
+MODULES = ["lzss", "gx2", "endian", "yaz0", "adpcm"]
 
 extensions = []
 for module in MODULES:
