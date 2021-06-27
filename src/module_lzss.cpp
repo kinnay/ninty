@@ -1,4 +1,5 @@
 
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <cstdint>
 #include <cstring>
@@ -11,7 +12,7 @@ enum class LZSSError {
 };
 
 template <typename T, int M>
-LZSSError lzss_decompress_internal(const uint8_t *inbase, uint32_t insize, uint8_t *outbase, uint32_t outsize) {
+LZSSError lzss_decompress_internal(const uint8_t *inbase, size_t insize, uint8_t *outbase, size_t outsize) {
 	const uint8_t *in = inbase;
 	uint8_t *out = outbase;
 	
@@ -33,13 +34,13 @@ LZSSError lzss_decompress_internal(const uint8_t *inbase, uint32_t insize, uint8
 			in += 2;
 			
 			int offset = (info & 0xFFF) * sizeof(T);
-			uint32_t length = ((info >> 12) + M) * sizeof(T);
+			size_t length = ((info >> 12) + M) * sizeof(T);
 			
 			if (offset > out - outbase || length > outsize) {
 				return LZSSError::BufferOverflow;
 			}
 			
-			for (uint32_t i = 0; i < length; i++) {
+			for (size_t i = 0; i < length; i++) {
 				out[i] = out[i - offset];
 			}
 			out += length;
@@ -63,7 +64,7 @@ LZSSError lzss_decompress_internal(const uint8_t *inbase, uint32_t insize, uint8
 	return LZSSError::OK;
 }
 
-LZSSError lzss_decompress(const uint8_t *in, uint32_t inlen, uint8_t *out, uint32_t outlen) {
+LZSSError lzss_decompress(const uint8_t *in, size_t inlen, uint8_t *out, size_t outlen) {
 	if (inlen < 4) {
 		return LZSSError::BufferOverflow;
 	}
@@ -109,7 +110,7 @@ void LZSS_set_error(LZSSError error) {
 
 PyObject *LZSS_decompress(PyObject *self, PyObject *args) {
 	const uint8_t *in;
-	uint32_t inlen;
+	size_t inlen;
 	uint32_t outlen;
 	if (!PyArg_ParseTuple(args, "y#I", &in, &inlen, &outlen)) {
 		return NULL;

@@ -1,4 +1,5 @@
 
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <cstdint>
 
@@ -53,13 +54,13 @@ bool decode_adpcm(
 
 PyObject *ADPCM_decode(PyObject *self, PyObject *args) {
 	const uint8_t *in;
-	uint32_t inlen;
+	size_t inlen;
 	uint32_t numSamples;
 	const uint8_t *coefBuf;
-	uint32_t coefLen;
+	size_t coefLen;
 	uint8_t initialHeader;
-	uint16_t initialHist1;
-	uint16_t initialHist2;
+	int16_t initialHist1;
+	int16_t initialHist2;
 	
 	if (!PyArg_ParseTuple(args, "y#iy#bhh",
 		&in, &inlen, &numSamples, &coefBuf, &coefLen,
@@ -73,7 +74,7 @@ PyObject *ADPCM_decode(PyObject *self, PyObject *args) {
 		return NULL;
 	}
 	
-	uint32_t bytesNeeded = numSamples / 14 * 8;
+	size_t bytesNeeded = numSamples / 14 * 8;
 	if (numSamples % 14) {
 		bytesNeeded += (numSamples % 14 + 1) / 2 + 1;
 	}

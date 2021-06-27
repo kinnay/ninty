@@ -1,4 +1,5 @@
 
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <cstdint>
 #include <cstring>
@@ -50,7 +51,7 @@ bool is_compressed(uint32_t format) {
 		format == GX2_SURFACE_FORMAT_UNORM_BC5;
 }
 
-int bytes_per_pixel(uint32_t format) {
+uint32_t bytes_per_pixel(uint32_t format) {
 	switch(format) {
 		case GX2_SURFACE_FORMAT_UNORM_R8_G8_B8_A8: return 4;
 		case GX2_SURFACE_FORMAT_UNORM_BC1: return 8;
@@ -60,7 +61,7 @@ int bytes_per_pixel(uint32_t format) {
 	}
 }
 
-int get_block_width(uint32_t tilemode) {
+uint32_t get_block_width(uint32_t tilemode) {
 	switch (tilemode) {
 		case GX2_TILE_MODE_TILED_1D_THIN1: return 8;
 		case GX2_TILE_MODE_TILED_2D_THIN1: return 32;
@@ -68,7 +69,7 @@ int get_block_width(uint32_t tilemode) {
 	}
 }
 
-int get_block_height(uint32_t tilemode) {
+uint32_t get_block_height(uint32_t tilemode) {
 	switch (tilemode) {
 		case GX2_TILE_MODE_TILED_1D_THIN1: return 8;
 		case GX2_TILE_MODE_TILED_2D_THIN1: return 16;
@@ -77,8 +78,8 @@ int get_block_height(uint32_t tilemode) {
 }
 
 GX2Error deswizzle_surface(
-	const uint8_t *in, uint32_t inlen, uint8_t *out,
-	int width, int height, GX2SurfaceFormat format,
+	const uint8_t *in, size_t inlen, uint8_t *out,
+	uint32_t width, uint32_t height, GX2SurfaceFormat format,
 	GX2TileMode tilemode, uint32_t swizzle
 ) {
 	if (tilemode == GX2_TILE_MODE_LINEAR_SPECIAL) {
@@ -97,50 +98,46 @@ GX2Error deswizzle_surface(
 	
 	swizzle = swizzle & 7;
 	
-	int pixelsize = bytes_per_pixel(format);
-	int tilesize = pixelsize * 64;
+	uint32_t pixelsize = bytes_per_pixel(format);
+	uint32_t tilesize = pixelsize * 64;
 	
-	for (int y = 0; y < height; y++) {
-		for (int x = 0; x < width; x++) {
+	if (inlen < width * height * pixelsize) {
+		return GX2Error::ImageSizeMismatch;
+	}
+	
+	for (uint32_t y = 0; y < height; y++) {
+		for (uint32_t x = 0; x < width; x++) {
+			uint32_t mask = 16 / pixelsize - 1;
+			uint32_t tempidx = ((y & 6) << 2) | (x & 7);
+			uint32_t pixelidx = (tempidx & mask) | ((tempidx & ~mask) << 1) | ((y & 1) * (mask + 1));
+			uint32_t pixeloffs = pixelidx * pixelsize;
 			
-			int mask = 16 / pixelsize - 1;
-			int tempidx = ((y & 6) << 2) | (x & 7);
-			int pixelidx = (tempidx & mask) | ((tempidx & ~mask) << 1) | ((y & 1) * (mask + 1));
-			int pixeloffs = pixelidx * pixelsize;
-			
-			int blockw = get_block_width(tilemode);
-			int blockh = get_block_height(tilemode);
-			int blockx = x / blockw;
-			int blocky = y / blockh;
-			int blockidx = blockx + blocky * (width / blockw);
-			
-			int tiledoffs;
+			uint32_t tiledoffs = 0;
 			if (tilemode == 2) {
-				int tilerow = width / 8;
-				int tilex = x / 8;
-				int tiley = y / 8;
-				int tileoffs = (tilex + tiley * tilerow) * tilesize;
+				uint32_t tilerow = width / 8;
+				uint32_t tilex = x / 8;
+				uint32_t tiley = y / 8;
+				uint32_t tileoffs = (tilex + tiley * tilerow) * tilesize;
 				tiledoffs = tileoffs + pixeloffs;
 			}
 			else if (tilemode == 4) {
-				int bankpipe = ((y >> 3) ^ (x >> 3)) & 1;
+				uint32_t bankpipe = ((y >> 3) ^ (x >> 3)) & 1;
 				bankpipe |= ((y >> 4) ^ (x >> 2)) & 2;
 				bankpipe |= ((y >> 2) ^ (x >> 2)) & 4;
 				bankpipe ^= swizzle;
 				
-				int blockw = 32;
-				int blockh = 16;
-				int blockx = x / blockw;
-				int blocky = y / blockh;
-				int blocksize = pixelsize * blockh * blockw;
-				int blockoffs = (blockx + blocky * (width / blockw)) * blocksize;
+				uint32_t blockw = 32;
+				uint32_t blockh = 16;
+				uint32_t blockx = x / blockw;
+				uint32_t blocky = y / blockh;
+				uint32_t blocksize = pixelsize * blockh * blockw;
+				uint32_t blockoffs = (blockx + blocky * (width / blockw)) * blocksize;
 				
-				int totaloffs = pixeloffs + (blockoffs >> 3);
+				uint32_t totaloffs = pixeloffs + (blockoffs >> 3);
 				tiledoffs = (bankpipe << 8) | (totaloffs & 0xFF) | ((totaloffs & ~0xFF) << 3);
 			}
 			
-			int linearoffs = (y * width + x) * pixelsize;
-			
+			uint32_t linearoffs = (y * width + x) * pixelsize;
 			memcpy(out + linearoffs, in + tiledoffs, pixelsize);
 		}
 	}
@@ -148,8 +145,6 @@ GX2Error deswizzle_surface(
 }
 
 void bc_interpolate(uint8_t *colors, int count) {
-	uint16_t c0 = colors[0];
-	uint16_t c1 = colors[1];
 	for (int i = 1; i < count; i++) {
 		colors[i+1] = (colors[0] * (count - i) + colors[1] * i) / count;
 	}
@@ -182,7 +177,7 @@ void bc_decode_565(uint16_t color, uint8_t *red, uint8_t *green, uint8_t *blue) 
 	blue[0] = (color & 0x1F) << 3;
 }
 
-GX2Error decompress_bc1(const uint8_t *in, uint32_t inlen, uint8_t *out, uint32_t width, uint32_t height) {
+GX2Error decompress_bc1(const uint8_t *in, size_t inlen, uint8_t *out, uint32_t width, uint32_t height) {
 	if (width % 4 || height % 4) {
 		return GX2Error::ImageNotAligned;
 	}
@@ -226,7 +221,7 @@ GX2Error decompress_bc1(const uint8_t *in, uint32_t inlen, uint8_t *out, uint32_
 	return GX2Error::OK;
 }
 
-GX2Error decompress_bc3(const uint8_t *in, uint32_t inlen, uint8_t *out, uint32_t width, uint32_t height) {
+GX2Error decompress_bc3(const uint8_t *in, size_t inlen, uint8_t *out, uint32_t width, uint32_t height) {
 	if (width % 4 || height % 4) {
 		return GX2Error::ImageNotAligned;
 	}
@@ -260,7 +255,7 @@ GX2Error decompress_bc3(const uint8_t *in, uint32_t inlen, uint8_t *out, uint32_
 					alphabits = alphabits2;
 				}
 				
-				uint32_t offset = ((by + y) * width + bx) * 4;
+				size_t offset = ((by + y) * width + bx) * 4;
 				uint8_t colorbits = in[y + 12];
 				for (int x = 0; x < 4; x++) {
 					out[offset] = red[colorbits & 3];
@@ -279,7 +274,7 @@ GX2Error decompress_bc3(const uint8_t *in, uint32_t inlen, uint8_t *out, uint32_
 	return GX2Error::OK;
 }
 
-GX2Error decompress_bc5(const uint8_t *in, uint32_t inlen, uint8_t *out, uint32_t width, uint32_t height) {
+GX2Error decompress_bc5(const uint8_t *in, size_t inlen, uint8_t *out, uint32_t width, uint32_t height) {
 	if (width % 4 || height % 4) {
 		return GX2Error::ImageNotAligned;
 	}
@@ -308,7 +303,7 @@ GX2Error decompress_bc5(const uint8_t *in, uint32_t inlen, uint8_t *out, uint32_
 					greenbits = greenbits2;
 				}
 				
-				uint32_t offset = ((by + y) * width + bx) * 4;
+				size_t offset = ((by + y) * width + bx) * 4;
 				for (int x = 0; x < 4; x++) {
 					out[offset] = red[redbits & 7];
 					out[offset+1] = green[greenbits & 7];
@@ -326,7 +321,7 @@ GX2Error decompress_bc5(const uint8_t *in, uint32_t inlen, uint8_t *out, uint32_
 	return GX2Error::OK;
 }
 
-GX2Error decode_image(const uint8_t *in, uint32_t inlen, uint8_t *out, uint32_t width, uint32_t height, GX2SurfaceFormat format) {
+GX2Error decode_image(const uint8_t *in, size_t inlen, uint8_t *out, uint32_t width, uint32_t height, GX2SurfaceFormat format) {
 	if (format == GX2_SURFACE_FORMAT_UNORM_R8_G8_B8_A8) {
 		if (inlen < width * height * 4) {
 			return GX2Error::ImageSizeMismatch;
@@ -361,7 +356,7 @@ void GX2_set_error(GX2Error error) {
 
 PyObject *GX2_deswizzle(PyObject *self, PyObject *args) {
 	const uint8_t *in;
-	uint32_t inlen;
+	size_t inlen;
 	uint32_t width;
 	uint32_t height;
 	GX2SurfaceFormat format;
@@ -391,7 +386,7 @@ PyObject *GX2_deswizzle(PyObject *self, PyObject *args) {
 
 PyObject *GX2_decode(PyObject *self, PyObject *args) {
 	const uint8_t *in;
-	uint32_t inlen;
+	size_t inlen;
 	uint32_t width;
 	uint32_t height;
 	GX2SurfaceFormat format;

@@ -1,4 +1,5 @@
 
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <cstdint>
 #include <cstring>
@@ -20,12 +21,12 @@ const uint8_t *findblock(const uint8_t *searchstart, const uint8_t *in, size_t m
 		blocksize = 0xFF + 0x12;
 	}
 	
-	uint32_t bestsize = 2;
+	size_t bestsize = 2;
 	const uint8_t *bestptr = NULL;
 	
 	searchstart = (uint8_t *)memchr(searchstart, in[0], in - searchstart);
 	while (searchstart) {
-		uint32_t matchsize = 1;
+		size_t matchsize = 1;
 		while (matchsize < blocksize) {
 			if (searchstart[matchsize] != in[matchsize]) {
 				break;
@@ -48,7 +49,7 @@ const uint8_t *findblock(const uint8_t *searchstart, const uint8_t *in, size_t m
 	return bestptr;
 }
 
-YAZ0Error yaz0_compress(const uint8_t *inbase, uint32_t inlen, uint8_t *outbase, size_t *outlen, int searchsize) {
+YAZ0Error yaz0_compress(const uint8_t *inbase, size_t inlen, uint8_t *outbase, size_t *outlen, int searchsize) {
 	uint8_t *out = outbase;
 	const uint8_t *in = inbase;
 	const uint8_t *inend = inbase + inlen;
@@ -103,7 +104,7 @@ YAZ0Error yaz0_compress(const uint8_t *inbase, uint32_t inlen, uint8_t *outbase,
 	return YAZ0Error::OK;
 }
 
-YAZ0Error yaz0_decompress(const uint8_t *inbase, uint32_t inlen, uint8_t *outbase, uint32_t outlen) {
+YAZ0Error yaz0_decompress(const uint8_t *inbase, size_t inlen, uint8_t *outbase, size_t outlen) {
 	uint8_t *out = outbase;
 	uint8_t *outend = outbase + outlen;
 	const uint8_t *in = inbase;
@@ -164,7 +165,7 @@ void YAZ0_set_error(YAZ0Error error) {
 
 PyObject *YAZ0_decompress(PyObject *self, PyObject *args) {
 	const uint8_t *in;
-	uint32_t inlen;
+	size_t inlen;
 	uint32_t outlen;
 	if (!PyArg_ParseTuple(args, "y#I", &in, &inlen, &outlen)) {
 		return NULL;
@@ -187,7 +188,7 @@ PyObject *YAZ0_decompress(PyObject *self, PyObject *args) {
 
 PyObject *YAZ0_compress(PyObject *self, PyObject *args) {
 	const uint8_t *in;
-	uint32_t inlen;
+	size_t inlen;
 	uint32_t searchsize;
 	if (!PyArg_ParseTuple(args, "y#I", &in, &inlen, &searchsize)) {
 		return NULL;
@@ -203,7 +204,7 @@ PyObject *YAZ0_compress(PyObject *self, PyObject *args) {
 		return NULL;
 	}
 	
-	uint32_t outlen = inlen + inlen / 8 + 1;
+	size_t outlen = inlen + inlen / 8 + 1;
 	uint8_t *out = (uint8_t *)PyMem_RawMalloc(outlen);
 	if (!out) {
 		return PyErr_NoMemory();

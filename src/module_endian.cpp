@@ -1,4 +1,5 @@
 
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <cstdint>
 #include <cstring>
@@ -30,8 +31,8 @@ uint32_t swap_value<uint32_t>(uint32_t value) {
 
 template <typename T>
 EndianError swap_array_tmpl(
-	uint8_t *data, uint32_t datasize, uint32_t size,
-	uint32_t offset, uint32_t count, uint32_t stride
+	uint8_t *data, size_t datasize, size_t size,
+	size_t offset, size_t count, size_t stride
 ) {
 	if (datasize % stride) {
 		return EndianError::SizeNotAligned;
@@ -40,8 +41,8 @@ EndianError swap_array_tmpl(
 		return EndianError::InvalidParameters;
 	}
 	
-	for (uint32_t offs = offset; offs < datasize; offs += stride) {
-		for (uint32_t i = 0; i < count; i++) {
+	for (size_t offs = offset; offs < datasize; offs += stride) {
+		for (size_t i = 0; i < count; i++) {
 			uint8_t *ptr = &data[offs+i*size];
 			*(T *)ptr = swap_value<T>(*(T *)ptr);
 		}
@@ -50,8 +51,8 @@ EndianError swap_array_tmpl(
 }
 
 EndianError swap_array(
-	const uint8_t *in, uint32_t insize, uint8_t *out, uint32_t size,
-	uint32_t offset, uint32_t count, uint32_t stride
+	const uint8_t *in, size_t insize, uint8_t *out, size_t size,
+	size_t offset, size_t count, size_t stride
 ) {
 	memcpy(out, in, insize);
 	if (size == 1) {
@@ -81,7 +82,7 @@ void Endian_set_error(EndianError error) {
 
 PyObject *Endian_swap_array(PyObject *self, PyObject *args) {
 	const uint8_t *in;
-	uint32_t inlen;
+	size_t inlen;
 	uint32_t size;
 	if (!PyArg_ParseTuple(args, "y#I", &in, &inlen, &size)) {
 		return NULL;
@@ -104,7 +105,7 @@ PyObject *Endian_swap_array(PyObject *self, PyObject *args) {
 
 PyObject *Endian_swap_array_element(PyObject *self, PyObject *args) {
 	const uint8_t *in;
-	uint32_t inlen;
+	size_t inlen;
 	uint32_t size;
 	uint32_t offset;
 	uint32_t stride;
@@ -129,7 +130,7 @@ PyObject *Endian_swap_array_element(PyObject *self, PyObject *args) {
 
 PyObject *Endian_swap_array_attribute(PyObject *self, PyObject *args) {
 	const uint8_t *in;
-	uint32_t inlen;
+	size_t inlen;
 	uint32_t size;
 	uint32_t offset;
 	uint32_t count;

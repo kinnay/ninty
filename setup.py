@@ -1,17 +1,29 @@
 
-from distutils.core import Extension, setup
+import setuptools
 
 MODULES = ["lzss", "gx2", "endian", "yaz0", "adpcm"]
 
+description = \
+	"C++ extension with functions for which python is too slow."
+
+long_description = description
+
 extensions = []
 for module in MODULES:
-	extension = Extension(
-		name = "wiiulib.%s" %module,
-		sources = ["src/module_%s.cpp" %module],
+	extension = setuptools.Extension(
+		name = "ninty.%s" %module,
+		sources = ["src/module_%s.cpp" %module]
 	)
 	extensions.append(extension)
 
-setup(
-	name = "wiiulib",
+setuptools.setup(
+	name = "ninty",
+	version = "0.0.3",
+	description = description,
+	long_description = long_description,
+	author = "Yannik Marchand",
+	author_email = "ymarchand@me.com",
+	url = "https://github.com/kinnay/ninty",
+	license = "GPLv3",
 	ext_modules = extensions
 )
