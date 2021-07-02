@@ -9,6 +9,12 @@ int16_t clamp(int val) {
 	return val;
 }
 
+void decode_pcm8(int16_t *out, const int8_t *in, uint32_t numSamples) {
+	for (uint32_t i = 0; i < numSamples; i++) {
+		out[i] = in[i] << 8;
+	}
+}
+
 bool decode_adpcm(
 	int16_t *out, const uint8_t *in, uint32_t numSamples,
 	const int16_t *coefs, uint8_t header, int16_t hist1, int16_t hist2
@@ -51,8 +57,35 @@ bool decode_adpcm(
 	return true;
 }
 
+PyObject *Audio_decode_pcm8(PyObject *self, PyObject *args) {
+	const int8_t *in;
+	size_t inlen;
+	uint32_t numSamples;
+	
+	if (!PyArg_ParseTuple(args, "y#i", &in, &inlen, &numSamples)) {
+		return NULL;
+	}
+	
+	if (inlen < numSamples) {
+		PyErr_SetString(PyExc_OverflowError, "buffer overflow");
+		return NULL;
+	}
+	
+	if (numSamples > 0x4000000) {
+		PyErr_SetString(PyExc_OverflowError, "stream is too large");
+		return NULL;
+	}
+	
+	PyObject *bytes = PyBytes_FromStringAndSize(NULL, numSamples * 2);
+	if (!bytes) return NULL;
+	
+	int16_t *out = (int16_t *)PyBytes_AsString(bytes);
+	decode_pcm8(out, in, numSamples);
+	
+	return bytes;
+}
 
-PyObject *ADPCM_decode(PyObject *self, PyObject *args) {
+PyObject *Audio_decode_adpcm(PyObject *self, PyObject *args) {
 	const uint8_t *in;
 	size_t inlen;
 	uint32_t numSamples;
@@ -127,20 +160,22 @@ PyObject *ADPCM_decode(PyObject *self, PyObject *args) {
 	return bytes;
 }
 
-PyMethodDef ADPCMMethods[] = {
-	{"decode", ADPCM_decode, METH_VARARGS, NULL},
+
+PyMethodDef AudioMethods[] = {
+	{"decode_pcm8", Audio_decode_pcm8, METH_VARARGS, NULL},
+	{"decode_adpcm", Audio_decode_adpcm, METH_VARARGS, NULL},
 	NULL
 };
 
-PyModuleDef ADPCMModule = {
+PyModuleDef AudioModule = {
 	PyModuleDef_HEAD_INIT,
-	"adpcm",
-	"ADPCM decoder",
+	"audio",
+	"Audio conversion",
 	-1,
 
-	ADPCMMethods
+	AudioMethods
 };
 
-PyMODINIT_FUNC PyInit_adpcm() {
-	return PyModule_Create(&ADPCMModule);
+PyMODINIT_FUNC PyInit_audio() {
+	return PyModule_Create(&AudioModule);
 }

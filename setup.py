@@ -1,7 +1,7 @@
 
 import setuptools
 
-MODULES = ["lzss", "gx2", "endian", "yaz0", "adpcm"]
+MODULES = ["lzss", "gx2", "endian", "yaz0", "audio"]
 
 description = \
 	"C++ extension with functions for which python is too slow."
@@ -18,7 +18,7 @@ for module in MODULES:
 
 setuptools.setup(
 	name = "ninty",
-	version = "0.0.3",
+	version = "0.0.4",
 	description = description,
 	long_description = long_description,
 	author = "Yannik Marchand",
