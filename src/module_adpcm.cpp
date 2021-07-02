@@ -11,7 +11,7 @@ int16_t clamp(int val) {
 
 bool decode_adpcm(
 	int16_t *out, const uint8_t *in, uint32_t numSamples,
-	int16_t *coefs, uint8_t header, int16_t hist1, int16_t hist2
+	const int16_t *coefs, uint8_t header, int16_t hist1, int16_t hist2
 ) {
 	int scale, coefIdx, coef1, coef2, nybble;
 	uint8_t byte;
@@ -56,22 +56,41 @@ PyObject *ADPCM_decode(PyObject *self, PyObject *args) {
 	const uint8_t *in;
 	size_t inlen;
 	uint32_t numSamples;
-	const uint8_t *coefBuf;
-	size_t coefLen;
+	PyObject *coefList;
 	uint8_t initialHeader;
 	int16_t initialHist1;
 	int16_t initialHist2;
 	
-	if (!PyArg_ParseTuple(args, "y#iy#bhh",
-		&in, &inlen, &numSamples, &coefBuf, &coefLen,
+	if (!PyArg_ParseTuple(args, "y#iO!bhh",
+		&in, &inlen, &numSamples, &PyList_Type, &coefList,
 		&initialHeader, &initialHist1, &initialHist2
 	)) {
 		return NULL;
 	}
 	
-	if (coefLen != 32) {
-		PyErr_SetString(PyExc_ValueError, "len(coefs) must be 32");
+	size_t size = PyList_Size(coefList);
+	if (size != 16) {
+		PyErr_SetString(PyExc_ValueError, "len(coefs) must be 16");
 		return NULL;
+	}
+	
+	int16_t coefs[16];
+	for (size_t i = 0; i < 16; i++) {
+		PyObject *item = PyList_GetItem(coefList, i);
+		if (!PyLong_Check(item)) {
+			PyErr_SetString(PyExc_TypeError, "coefs must contain only integers");
+			return NULL;
+		}
+		
+		long value = PyLong_AsLong(item);
+		if (PyErr_Occurred()) return NULL;
+		
+		if (value < -0x8000 || value > 0x7FFF) {
+			PyErr_SetString(PyExc_OverflowError, "coefs must contain 16-bit signed integers");
+			return NULL;
+		}
+		
+		coefs[i] = value;
 	}
 	
 	size_t bytesNeeded = numSamples / 14 * 8;
@@ -93,11 +112,6 @@ PyObject *ADPCM_decode(PyObject *self, PyObject *args) {
 	if (!bytes) return NULL;
 	
 	int16_t *out = (int16_t *)PyBytes_AsString(bytes);
-	
-	int16_t coefs[16];
-	for (int i = 0; i < 16; i++) {
-		coefs[i] = (coefBuf[i * 2] << 8) | coefBuf[i * 2 + 1];
-	}
 	
 	bool result = decode_adpcm(
 		out, in, numSamples, coefs,
