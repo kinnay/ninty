@@ -96,9 +96,8 @@ YAZ0Error yaz0_compress(const uint8_t *inbase, size_t inlen, uint8_t *outbase, s
 		}
 	}
 	
-	if (bits) {
-		*codeptr = code;
-	}
+	if (bits) *codeptr = code;
+	else out--;
 	
 	*outlen = out - outbase;
 	return YAZ0Error::OK;
