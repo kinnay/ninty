@@ -19,8 +19,12 @@ bool decode_adpcm(
 	int16_t *out, const uint8_t *in, uint32_t numSamples,
 	const int16_t *coefs, uint8_t header, int16_t hist1, int16_t hist2
 ) {
-	int scale, coefIdx, coef1, coef2, nybble;
-	uint8_t byte;
+	int nybble;
+	int coefIdx;
+	int scale = 0;
+	int coef1 = 0;
+	int coef2 = 0;
+	uint8_t byte = 0;
 	
 	for (uint32_t i = 0; i < numSamples; i++) {
 		if (i % 14 == 0) {
@@ -55,6 +59,77 @@ bool decode_adpcm(
 		*out++ = sample;
 	}
 	return true;
+}
+
+PyObject *Audio_interleave(PyObject *self, PyObject *args) {
+	if (!PyList_Check(args)) {
+		PyErr_SetString(PyExc_TypeError, "channels must be a list object");
+		return NULL;
+	}
+	
+	size_t count = PyList_Size(args);
+	if (!count) {
+		return PyBytes_FromString("");
+	}
+	
+	if (count > 0x10000) {
+		PyErr_SetString(PyExc_ValueError, "too many channels");
+		return NULL;
+	}
+	
+	ssize_t size;
+	for (size_t i = 0; i < count; i++) {
+		PyObject *channel = PyList_GetItem(args, i);
+		if (!PyBytes_Check(channel)) {
+			PyErr_SetString(PyExc_TypeError, "channel must be a bytes object");
+			return NULL;
+		}
+		
+		if (i == 0) {
+			size = PyBytes_Size(channel);
+			if (size % 2) {
+				PyErr_SetString(PyExc_ValueError, "channel must contain an even number of bytes");
+				return NULL;
+			}
+			
+			if (size > 0x8000000) {
+				PyErr_SetString(PyExc_OverflowError, "stream is too large");
+				return NULL;
+			}
+		}
+		else {
+			if (PyBytes_Size(channel) != size) {
+				PyErr_SetString(PyExc_ValueError, "every channel must contain the same number of bytes");
+				return NULL;
+			}
+		}
+	}
+	
+	const int16_t **channels = (const int16_t **)malloc(count * sizeof(int16_t *));
+	if (!channels) {
+		return PyErr_NoMemory();
+	}
+	
+	PyObject *bytes = PyBytes_FromStringAndSize(NULL, count * size);
+	if (!bytes) {
+		free(channels);
+		return NULL;
+	}
+	
+	for (size_t i = 0; i < count; i++) {
+		PyObject *channel = PyList_GetItem(args, i);
+		channels[i] = (const int16_t *)PyBytes_AsString(channel);
+	}
+	
+	int16_t *out = (int16_t *)PyBytes_AsString(bytes);
+	for (ssize_t i = 0; i < size / 2; i++) {
+		for (size_t j = 0; j < count; j++) {
+			out[i * count + j] = channels[j][i];
+		}
+	}
+	
+	free(channels);
+	return bytes;
 }
 
 PyObject *Audio_decode_pcm8(PyObject *self, PyObject *args) {
@@ -162,6 +237,7 @@ PyObject *Audio_decode_adpcm(PyObject *self, PyObject *args) {
 
 
 PyMethodDef AudioMethods[] = {
+	{"interleave", Audio_interleave, METH_O, NULL},
 	{"decode_pcm8", Audio_decode_pcm8, METH_VARARGS, NULL},
 	{"decode_adpcm", Audio_decode_adpcm, METH_VARARGS, NULL},
 	NULL

@@ -18,7 +18,7 @@ for module in MODULES:
 
 setuptools.setup(
 	name = "ninty",
-	version = "0.0.5",
+	version = "0.0.6",
 	description = description,
 	long_description = long_description,
 	author = "Yannik Marchand",
