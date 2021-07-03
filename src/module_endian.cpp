@@ -84,58 +84,29 @@ PyObject *Endian_swap_array(PyObject *self, PyObject *args) {
 	const uint8_t *in;
 	size_t inlen;
 	uint32_t size;
-	if (!PyArg_ParseTuple(args, "y#I", &in, &inlen, &size)) {
-		return NULL;
-	}
-	
-	PyObject *bytes = PyBytes_FromStringAndSize(NULL, inlen);
-	if (!bytes) return NULL;
-	
-	uint8_t *out = (uint8_t *)PyBytes_AsString(bytes);
-	
-	EndianError error = swap_array(in, inlen, out, size, 0, 1, size);
-	if (error != EndianError::OK) {
-		Py_DECREF(bytes);
-		Endian_set_error(error);
-		return NULL;
-	}
-	
-	return bytes;
-}
-
-PyObject *Endian_swap_array_element(PyObject *self, PyObject *args) {
-	const uint8_t *in;
-	size_t inlen;
-	uint32_t size;
-	uint32_t offset;
+	uint32_t offset = 0;
+	uint32_t count = 1;
 	uint32_t stride;
-	if (!PyArg_ParseTuple(args, "y#III", &in, &inlen, &size, &offset, &stride)) {
-		return NULL;
+	
+	size_t nargs = PyTuple_Size(args);
+	if (nargs == 2) {
+		if (!PyArg_ParseTuple(args, "y#I", &in, &inlen, &size)) {
+			return NULL;
+		}
+		stride = size;
 	}
-	
-	PyObject *bytes = PyBytes_FromStringAndSize(NULL, inlen);
-	if (!bytes) return NULL;
-	
-	uint8_t *out = (uint8_t *)PyBytes_AsString(bytes);
-	
-	EndianError error = swap_array(in, inlen, out, size, offset, 1, stride);
-	if (error != EndianError::OK) {
-		Py_DECREF(bytes);
-		Endian_set_error(error);
-		return NULL;
+	else if (nargs == 4) {
+		if (!PyArg_ParseTuple(args, "y#III", &in, &inlen, &size, &offset, &stride)) {
+			return NULL;
+		}
 	}
-	
-	return bytes;
-}
-
-PyObject *Endian_swap_array_attribute(PyObject *self, PyObject *args) {
-	const uint8_t *in;
-	size_t inlen;
-	uint32_t size;
-	uint32_t offset;
-	uint32_t count;
-	uint32_t stride;
-	if (!PyArg_ParseTuple(args, "y#IIII", &in, &inlen, &size, &offset, &count, &stride)) {
+	else if (nargs == 5) {
+		if (!PyArg_ParseTuple(args, "y#IIII", &in, &inlen, &size, &offset, &count, &stride)) {
+			return NULL;
+		}
+	}
+	else {
+		PyErr_SetString(PyExc_TypeError, "endian.swap_array takes 2, 4 or 5 arguments");
 		return NULL;
 	}
 	
@@ -156,8 +127,6 @@ PyObject *Endian_swap_array_attribute(PyObject *self, PyObject *args) {
 
 PyMethodDef EndianMethods[] = {
 	{"swap_array", Endian_swap_array, METH_VARARGS, NULL},
-	{"swap_array_element", Endian_swap_array_element, METH_VARARGS, NULL},
-	{"swap_array_attribute", Endian_swap_array_attribute, METH_VARARGS, NULL},
 	NULL
 };
 

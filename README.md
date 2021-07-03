@@ -12,8 +12,8 @@ audio.decode_pcm8(data: bytes, samples: int) -> bytes
 audio.decode_adpcm(data: bytes, samples: int, coefs: list[int], header: int, hist1: int, hist2: int) -> bytes
 
 endian.swap_array(data: bytes, size: int) -> bytes
-endian.swap_array_element(data: bytes, size: int, offset: int, stride: int) -> bytes
-endian.swap_array_attribute(data: bytes, size: int, offset: int, count: int, stride: int) -> bytes
+endian.swap_array(data: bytes, size: int, offset: int, stride: int) -> bytes
+endian.swap_array(data: bytes, size: int, offset: int, count: int, stride: int) -> bytes
 
 gx2.deswizzle(data: bytes, width: int, height: int, format: int, tilemode: int, swizzle: int) -> bytes
 gx2.decode(data: bytes, width: int, height: int, format: int) -> bytes
