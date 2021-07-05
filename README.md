@@ -8,8 +8,12 @@ To install this, run `pip3 install ninty`.
 from ninty import audio, endian, gx2, lzss, yaz0
 
 audio.interleave(channels: list[bytes]) -> bytes
-audio.decode_pcm8(data: bytes, samples: int) -> bytes
-audio.decode_adpcm(data: bytes, samples: int, coefs: list[int], header: int, hist1: int, hist2: int) -> bytes
+audio.deinterleave(data: bytes, channels: int) -> list[bytes]
+audio.decode_pcm8(data: bytes) -> bytes
+audio.encode_pcm8(data: bytes) -> bytes
+audio.decode_adpcm(data: bytes, samples: int, coefs: list[int]) -> bytes
+audio.encode_adpcm(data: bytes) -> tuple[bytes, list[int]]
+audio.get_adpcm_context(data: bytes, samples: int, coefs: list[int]) -> tuple[int, int, int]
 
 endian.swap_array(data: bytes, size: int) -> bytes
 endian.swap_array(data: bytes, size: int, offset: int, stride: int) -> bytes

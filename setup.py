@@ -1,7 +1,16 @@
 
 import setuptools
 
-MODULES = ["lzss", "gx2", "endian", "yaz0", "audio"]
+MODULES = {
+	"lzss": ["src/module_lzss.cpp"],
+	"gx2": ["src/module_gx2.cpp"],
+	"endian": ["src/module_endian.cpp"],
+	"yaz0": ["src/module_yaz0.cpp"],
+	"audio": [
+		"src/module_audio.cpp",
+		"src/dsptool/encoder.cpp"
+	]
+}
 
 description = \
 	"C++ extension with functions for which python is too slow."
@@ -9,10 +18,11 @@ description = \
 long_description = description
 
 extensions = []
-for module in MODULES:
+for name, files in MODULES.items():
 	extension = setuptools.Extension(
-		name = "ninty.%s" %module,
-		sources = ["src/module_%s.cpp" %module]
+		name = "ninty.%s" %name,
+		sources = files,
+		include_dirs = ["src"]
 	)
 	extensions.append(extension)
 
