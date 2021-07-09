@@ -29,7 +29,7 @@ void bc3_interpolate(uint8_t *colors) {
 		colors[7] = 0xFF;
 	}
 }
-	
+
 void bc_decode_565(uint16_t color, uint8_t *red, uint8_t *green, uint8_t *blue) {
 	red[0] = (color >> 11) << 3;
 	green[0] = (color >> 3) & 0xFC;
@@ -101,6 +101,29 @@ void decompress_bc3(uint8_t *out, const uint8_t *in) {
 			*out++ = alpha[alphabits & 7];
 			alphabits >>= 3;
 			colorbits >>= 2;
+		}
+	}
+}
+
+void decompress_bc4(uint8_t *out, const uint8_t *in) {
+	uint8_t red[8];
+	red[0] = in[0];
+	red[1] = in[1];
+	
+	bc3_interpolate(red);
+	
+	uint32_t bits = in[2] | (in[3] << 8) | (in[4] << 16);
+	uint32_t bits2 = in[5] | (in[6] << 8) | (in[7] << 16);
+	
+	for (int y = 0; y < 4; y++) {
+		if (y == 2) bits = bits2;
+		
+		for (int x = 0; x < 4; x++) {
+			*out++ = red[bits & 7];
+			*out++ = 0;
+			*out++ = 0;
+			*out++ = 0xFF;
+			bits >>= 3;
 		}
 	}
 }

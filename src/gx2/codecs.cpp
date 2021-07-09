@@ -14,6 +14,13 @@ uint32_t decode_pixel(const void *pix, GX2SurfaceFormat format) {
 		uint8_t *ptr = (uint8_t *)pix;
 		return pixel(ptr[0], ptr[1], 0, 0xFF);
 	}
+	else if (format == GX2_SURFACE_FORMAT_UNORM_R5_G6_B5) {
+		uint16_t value = *(uint16_t *)pix;
+		uint8_t r = value >> 11;
+		uint8_t g = (value >> 5) & 0x3F;
+		uint8_t b = value & 0x1F;
+		return pixel(r << 3, g << 2, b << 3, 0xFF);
+	}
 	else if (format == GX2_SURFACE_FORMAT_UNORM_R8_G8_B8_A8) {
 		uint8_t *ptr = (uint8_t *)pix;
 		return pixel(ptr[0], ptr[1], ptr[2], ptr[3]);
@@ -24,6 +31,7 @@ uint32_t decode_pixel(const void *pix, GX2SurfaceFormat format) {
 void decompress_block(uint8_t *block, const uint8_t *pix, GX2SurfaceFormat format) {
 	if (format == GX2_SURFACE_FORMAT_UNORM_BC1) decompress_bc1(block, pix);
 	else if (format == GX2_SURFACE_FORMAT_UNORM_BC3) decompress_bc3(block, pix);
+	else if (format == GX2_SURFACE_FORMAT_UNORM_BC4) decompress_bc4(block, pix);
 	else if (format == GX2_SURFACE_FORMAT_UNORM_BC5) decompress_bc5(block, pix);
 }
 

@@ -41,7 +41,7 @@ for name, files in MODULES.items():
 
 setuptools.setup(
 	name = "ninty",
-	version = "0.0.8",
+	version = "0.0.9",
 	description = description,
 	long_description = long_description,
 	author = "Yannik Marchand",
