@@ -10,6 +10,9 @@
 <code>**def deswizzle**(data: bytes, width: int, height: int, format: int, tilemode: int, swizzle: int) -> bytes</code><br>
 <span class="docs">Deswizzles a 2D texture and its mipmaps with the given parameters. All texture formats and tile modes are supported.</span>
 
+<code>**def swizzle**(data: bytes, width: int, height: int, format: int, tilemode: int, swizzle: int) -> bytes</code><br>
+<span class="docs">Swizzles a 2D texture and its mipmaps with the given parameters. All texture formats and tile modes are supported.</span>
+
 <code>**def decode**(data: bytes, width: int, height: int, format: int) -> bytes</code><br>
 <span class="docs">Decodes a 2D texture and its mipmaps to RGBA. Only a limited number of formats are supported.</span>
 
@@ -37,3 +40,12 @@
 
 <code>**def calc_size_and_alignment**() -> None</code><br>
 <span class="docs">This is an implementation of `GX2CalcSurfaceSizeAndAlignment`.<br><br>The following fields are updated: `alignment`, `pitch`, `swizzle`, `image_size`, `mipmap_size`, `mip_levels` and `mip_level_offset`.<br><br>If `tilemode` is set to `GX2_TILE_MODE_DEFAULT` it is updated as well.
+
+<code>**def deswizzle**() -> None</code><br>
+<span class="docs">Deswizzles the surface.</span>
+
+<code>**def swizzle**(tilemode: int, swizzle: int) -> None</code><br>
+<span class="docs">Swizzles the surface.</span>
+
+<code>**def decode**() -> None</code><br>
+<span class="docs">Decodes the surface to RGBA. Only deswizzled surfaces can be decoded.</span>
