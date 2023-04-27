@@ -1,42 +1,21 @@
 
 #define PY_SSIZE_T_CLEAN
 
+#include "type_surface.h"
+
 #include "gx2/facade.h"
 #include "gx2/surface.h"
+#include "gx2/codecs.h"
 #include "gx2/enum.h"
 
 #include <Python.h>
 #include <cstdint>
 #include <cstring>
 
-
-GX2SurfaceFormat supported_formats[] = {
-	GX2_SURFACE_FORMAT_UNORM_R8_G8,
-	GX2_SURFACE_FORMAT_UNORM_R5_G6_B5,
-	GX2_SURFACE_FORMAT_UNORM_R8_G8_B8_A8,
-	GX2_SURFACE_FORMAT_UNORM_BC1,
-	GX2_SURFACE_FORMAT_UNORM_BC3,
-	GX2_SURFACE_FORMAT_UNORM_BC4,
-	GX2_SURFACE_FORMAT_UNORM_BC5
-};
-
-
-PyObject *GX2_deswizzle(PyObject *self, PyObject *args) {
-	uint8_t *in;
-	size_t inlen;
-	uint32_t width;
-	uint32_t height;
-	GX2SurfaceFormat format;
-	GX2TileMode tilemode;
-	uint32_t swizzle;
-	
-	if (!PyArg_ParseTuple(
-	  args, "y#IIIII", &in, &inlen, &width, &height,
-	  &format, &tilemode, &swizzle
-	)) {
-		return NULL;
-	}
-	
+PyObject *convert_tilemode(
+	uint8_t *in, size_t inlen, uint32_t width, uint32_t height, GX2SurfaceFormat format,
+	GX2TileMode tilemode_in, uint8_t swizzle_in, GX2TileMode tilemode_out, uint8_t swizzle_out
+) {
 	GX2Surface surface;
 	surface.dim = GX2_SURFACE_DIM_TEXTURE_2D;
 	surface.width = width;
@@ -46,8 +25,8 @@ PyObject *GX2_deswizzle(PyObject *self, PyObject *args) {
 	surface.format = format;
 	surface.aa = GX2_AA_MODE_1X;
 	surface.use = GX2_SURFACE_USE_TEXTURE;
-	surface.tile_mode = tilemode;
-	surface.swizzle = swizzle << 8;
+	surface.tile_mode = tilemode_in;
+	surface.swizzle = swizzle_in << 8;
 	
 	GX2CalcSurfaceSizeAndAlignment(&surface);
 	
@@ -62,11 +41,57 @@ PyObject *GX2_deswizzle(PyObject *self, PyObject *args) {
 	}
 	
 	GX2Surface output;
-	gx2::deswizzle(&surface, &output);
+	if (!gx2::convert_tilemode(&surface, &output, tilemode_out, swizzle_out)) {
+		return PyErr_NoMemory();
+	}
 	
 	PyObject *bytes = PyBytes_FromStringAndSize((char *)output.image, output.image_size + output.mipmap_size);
 	free(output.image);
 	return bytes;
+}
+
+PyObject *GX2_swizzle(PyObject *self, PyObject *args) {
+	uint8_t *in;
+	size_t inlen;
+	uint32_t width;
+	uint32_t height;
+	GX2SurfaceFormat format;
+	GX2TileMode tilemode;
+	uint8_t swizzle;
+	
+	if (!PyArg_ParseTuple(
+	  args, "y#IIIIb", &in, &inlen, &width, &height,
+	  &format, &tilemode, &swizzle
+	)) {
+		return NULL;
+	}
+	
+	return convert_tilemode(
+		in, inlen, width, height, format,
+		GX2_TILE_MODE_LINEAR_SPECIAL, 0, tilemode, swizzle
+	);
+}
+
+PyObject *GX2_deswizzle(PyObject *self, PyObject *args) {
+	uint8_t *in;
+	size_t inlen;
+	uint32_t width;
+	uint32_t height;
+	GX2SurfaceFormat format;
+	GX2TileMode tilemode;
+	uint8_t swizzle;
+	
+	if (!PyArg_ParseTuple(
+	  args, "y#IIIIb", &in, &inlen, &width, &height,
+	  &format, &tilemode, &swizzle
+	)) {
+		return NULL;
+	}
+	
+	return convert_tilemode(
+		in, inlen, width, height, format,
+		tilemode, swizzle, GX2_TILE_MODE_LINEAR_SPECIAL, 0
+	);
 }
 
 PyObject *GX2_decode(PyObject *self, PyObject *args) {
@@ -78,17 +103,8 @@ PyObject *GX2_decode(PyObject *self, PyObject *args) {
 	if (!PyArg_ParseTuple(args, "y#III", &in, &inlen, &width, &height, &format)) {
 		return NULL;
 	}
-	
-	bool supported = false;
-	for (size_t i = 0; i < sizeof(supported_formats) / sizeof(supported_formats[0]); i++) {
-		if (supported_formats[i] == format) {
-			supported = true;
-			break;
-		}
-	}
-	
-	if (!supported) {
-		PyErr_SetString(PyExc_ValueError, "image format not supported");
+	if (!gx2::is_format_supported(format)) {
+		PyErr_SetString(PyExc_ValueError, "surface format not supported");
 		return NULL;
 	}
 	
@@ -117,7 +133,9 @@ PyObject *GX2_decode(PyObject *self, PyObject *args) {
 	}
 	
 	GX2Surface output;
-	gx2::decode(&surface, &output);
+	if (!gx2::decode(&surface, &output)) {
+		return PyErr_NoMemory();
+	}
 	
 	PyObject *bytes = PyBytes_FromStringAndSize((char *)output.image, output.image_size + output.mipmap_size);
 	free(output.image);
@@ -125,6 +143,7 @@ PyObject *GX2_decode(PyObject *self, PyObject *args) {
 }
 
 PyMethodDef GX2Methods[] = {
+	{"swizzle", GX2_swizzle, METH_VARARGS, NULL},
 	{"deswizzle", GX2_deswizzle, METH_VARARGS, NULL},
 	{"decode", GX2_decode, METH_VARARGS, NULL},
 	NULL
@@ -140,5 +159,21 @@ PyModuleDef GX2Module = {
 };
 
 PyMODINIT_FUNC PyInit_gx2() {
-	return PyModule_Create(&GX2Module);
+	PyObject *module = PyModule_Create(&GX2Module);
+	if (!module) return NULL;
+	
+	PyObject *formats = PyList_New(gx2::num_supported_formats);
+	for (size_t i = 0; i < gx2::num_supported_formats; i++) {
+		PyList_SetItem(formats, i, PyLong_FromLong(gx2::supported_formats[i]));
+	}
+	
+	if (PyModule_AddObject(module, "SUPPORTED_SURFACE_FORMATS", formats) < 0) {
+		Py_DECREF(formats);
+		Py_DECREF(module);
+		return NULL;
+	}
+	
+	PyModule_AddType(module, &SurfaceType);
+	
+	return module;
 }

@@ -7,14 +7,14 @@
 #include <cstdlib>
 
 
-void gx2::deswizzle(GX2Surface *input, GX2Surface *output) {
+bool gx2::convert_tilemode(GX2Surface *input, GX2Surface *output, GX2TileMode tilemode, uint8_t swizzle) {
 	*output = *input;
-	output->tile_mode = GX2_TILE_MODE_LINEAR_SPECIAL;
-	output->swizzle &= 0xFFFF00FF;
-	
+	output->tile_mode = tilemode;
+	output->swizzle = (output->swizzle & 0xFFFF00FF) | (swizzle << 8);
 	GX2CalcSurfaceSizeAndAlignment(output);
 	
 	output->image = (uint8_t *)malloc(output->image_size + output->mipmap_size);
+	if (!output->image) return false;
 	
 	output->mipmaps = nullptr;
 	if (output->mip_levels > 1) {
@@ -30,14 +30,17 @@ void gx2::deswizzle(GX2Surface *input, GX2Surface *output) {
 			GX2CopySurface(input, level, slice, output, level, slice);
 		}
 	}
+	
+	return true;
 }
 
-void gx2::decode(GX2Surface *input, GX2Surface *output) {
+bool gx2::decode(GX2Surface *input, GX2Surface *output) {
 	*output = *input;
 	output->format = GX2_SURFACE_FORMAT_UNORM_R8_G8_B8_A8;
 	GX2CalcSurfaceSizeAndAlignment(output);
 	
 	output->image = (uint8_t *)malloc(output->image_size + output->mipmap_size);
+	if (!output->image) return false;
 	
 	output->mipmaps = nullptr;
 	if (output->mip_levels > 1) {
@@ -59,4 +62,5 @@ void gx2::decode(GX2Surface *input, GX2Surface *output) {
 			decode_pixels(dst, src, width, height, input->format);
 		}
 	}
+	return true;
 }

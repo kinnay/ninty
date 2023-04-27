@@ -4,7 +4,26 @@
 #include "gx2/helpers.h"
 
 namespace gx2 {
-	
+
+GX2SurfaceFormat supported_formats[] = {
+	GX2_SURFACE_FORMAT_UNORM_R8_G8,
+	GX2_SURFACE_FORMAT_UNORM_R5_G6_B5,
+	GX2_SURFACE_FORMAT_UNORM_R8_G8_B8_A8,
+	GX2_SURFACE_FORMAT_UNORM_BC1,
+	GX2_SURFACE_FORMAT_UNORM_BC3,
+	GX2_SURFACE_FORMAT_UNORM_BC4,
+	GX2_SURFACE_FORMAT_UNORM_BC5
+};
+
+size_t num_supported_formats = sizeof(supported_formats) / sizeof(supported_formats[0]);
+
+bool is_format_supported(GX2SurfaceFormat format) {
+	for (size_t i = 0; i < num_supported_formats; i++) {
+		if (supported_formats[i] == format) return true;
+	}
+	return false;
+}
+
 uint32_t pixel(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
 	return (r << 24) | (g << 16) | (b << 8) | a;
 }

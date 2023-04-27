@@ -1,6 +1,7 @@
 
-import setuptools
 import os
+import setuptools
+
 
 def walk(path):
 	files = []
@@ -10,10 +11,12 @@ def walk(path):
 				files.append(os.path.join(dirpath, filename))
 	return files
 
+
 MODULES = {
 	"lzss": ["src/module_lzss.cpp"],
 	"gx2": [
 		"src/module_gx2.cpp",
+		"src/type_surface.cpp",
 		*walk("src/addrlib"),
 		*walk("src/gx2")
 	],
@@ -41,7 +44,7 @@ for name, files in MODULES.items():
 
 setuptools.setup(
 	name = "ninty",
-	version = "0.0.9",
+	version = "0.0.12",
 	description = description,
 	long_description = long_description,
 	author = "Yannik Marchand",
