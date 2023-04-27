@@ -1,0 +1,4 @@
+
+site_name: ninty
+theme: readthedocs
+extra_css: [style.css]
