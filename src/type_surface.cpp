@@ -127,7 +127,7 @@ PyObject *Surface_swizzle(SurfaceObject *self, PyObject *args) {
 	GX2TileMode tilemode;
 	uint8_t swizzle;
 	
-	if (!PyArg_ParseTuple(args, "Ib", &tilemode, swizzle)) {
+	if (!PyArg_ParseTuple(args, "Ib", &tilemode, &swizzle)) {
 		return NULL;
 	}
 	
