@@ -1,7 +1,6 @@
 
 #include <cstdint>
 #include <cstdlib>
-#include <cstdbool>
 #include <cmath>
 #include <cfloat>
 #include <cstring>
