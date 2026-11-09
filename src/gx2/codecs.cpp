@@ -6,6 +6,7 @@
 namespace gx2 {
 
 GX2SurfaceFormat supported_formats[] = {
+	GX2_SURFACE_FORMAT_UNORM_R8,
 	GX2_SURFACE_FORMAT_UNORM_R8_G8,
 	GX2_SURFACE_FORMAT_UNORM_R5_G6_B5,
 	GX2_SURFACE_FORMAT_UNORM_R8_G8_B8_A8,
@@ -29,7 +30,11 @@ uint32_t pixel(uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
 }
 
 uint32_t decode_pixel(const void *pix, GX2SurfaceFormat format) {
-	if (format == GX2_SURFACE_FORMAT_UNORM_R8_G8) {
+	if (format == GX2_SURFACE_FORMAT_UNORM_R8) {
+		uint8_t *ptr = (uint8_t *)pix;
+		return pixel(ptr[0], 0, 0, 0xFF);
+	}
+	else if (format == GX2_SURFACE_FORMAT_UNORM_R8_G8) {
 		uint8_t *ptr = (uint8_t *)pix;
 		return pixel(ptr[0], ptr[1], 0, 0xFF);
 	}
